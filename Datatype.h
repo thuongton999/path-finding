@@ -4,28 +4,40 @@ using namespace std;
 #define DATATYPE_H
 #endif
 
-class Node{
+class Node {
     public:
         Node() {}
-        Node(int x, int y, int g, int h, bool walkable) {
+        // getters
+        bool isVisited() const { return this->visited; }
+        bool isWalkable() const { return this->walkable; }
+        // setters
+        void setVisited(bool visited) { this->visited = visited; }
+        void setWalkable(bool walkable) { this->walkable = walkable; }
+    private:
+        bool walkable = true;
+        bool visited = false;
+};
+class MazeNode : public Node {
+    public:
+        MazeNode() {}
+        MazeNode(int x, int y, int g, int h, bool walkable) {
             this->x = x;
             this->y = y;
             this->g = g;
             this->h = h;
-            this->walkable = walkable;
+            this->setWalkable(walkable);
         }
         // getters
         int getX() const { return x; }
         int getY() const { return y; }
         int getG() const { return g; }
         int getCost() const {
-            if (walkable) return g + h;
+            if (this->isWalkable()) g + h;
             return __INT_MAX__;
         }
         int getParentX() const { return this->parentX; }
         int getParentY() const { return this->parentY; }
-        bool isVisited() const { return visited; }
-        bool isWalkable() const { return walkable; }
+        
         // setters
         void setParentLocation(int x, int y) { 
             this->parentX = x;
@@ -33,39 +45,72 @@ class Node{
         }
         void setG(int g) { this->g = g; }
         void setH(int h) { this->h = h; }
-        void setVisited(bool visited) { this->visited = visited; }
     private:
         int x, y;
         int g, h;
-        bool walkable;
-        bool visited = false;
         int parentX, parentY;
 };
 
-bool operator < (const Node &a, const Node &b) {
-    return a.getCost() < b.getCost();
-}
-bool operator > (const Node &a, const Node &b) {
-    return a.getCost() > b.getCost();
-}
-bool operator == (const Node &a, const Node &b) {
+bool operator < (const MazeNode &a, const MazeNode &b) {return a.getCost() < b.getCost(); }
+bool operator > (const MazeNode &a, const MazeNode &b) {return a.getCost() > b.getCost(); }
+bool operator == (const MazeNode &a, const MazeNode &b) {
     return a.getX() == b.getX() && a.getY() == b.getY();
 }
-struct LowerCost {
-    bool operator()(const Node &a, const Node &b) const {
+struct MazeNode_LowerCost {
+    bool operator()(const MazeNode &a, const MazeNode &b) const {
         return a.getCost() > b.getCost();
     }
 };
 
+template<typename T>
+class GraphNode : public Node {
+    public:
+        GraphNode() {}
+        GraphNode(T value) {
+            this->value = value;
+        }
+        // getters
+        T getValue() { return this->value; }
+        int getCostTo(GraphNode<T>* toNode) {
+            if (this->linkedNodes.find(toNode) == this->linkedNodes.end()) return -1;
+            return this->linkedNodes[toNode];
+        }
+        // setters
+        void setValue(T value) { this->value = value; }
+        void linkNode(GraphNode<T>* node, int cost) { this->linkedNodes[node] = cost;}
+    private:
+        T value;
+        unordered_map<GraphNode<T>*, int> linkedNodes;
+};
+template<typename T>
+ostream& operator << (ostream &out, const GraphNode<T> &node) {
+    out << node.getValue();
+    return out;
+}
+
+template<typename T>
 class IPathFinding {
     public:
-        virtual vector<Node> findPath() = 0;
-        virtual void visualize(vector<Node> path) = 0;
+        virtual vector<T> findPath() = 0;
+        virtual void visualize(vector<T> path) = 0;
+};
+template<typename T>
+class GraphPathFinding : IPathFinding<GraphNode<T>> {
+    protected:
+        GraphNode<T>* start;
+        GraphNode<T>* end;
+        int totalEdges, totalNodes;
+        unordered_map<T, GraphNode<T>> graph; 
+        void addEdge(T from, T to, int cost) {
+            this->graph[from].linkNode(&this->graph[to], cost);
+        }
+};
+class MazePathFinding : IPathFinding<MazeNode> {
     protected:
         int width, height;
         int startX, startY;
         int endX, endY;
-        int getDistance(Node a, Node b) {
+        int getDistance(MazeNode a, MazeNode b) {
             int distX = abs(a.getX() - b.getX());
             int distY = abs(a.getY() - b.getY());
             if (distX > distY)

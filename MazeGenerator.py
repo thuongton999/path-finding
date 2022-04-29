@@ -176,4 +176,4 @@ if __name__ == "__main__":
 
     if (canExportImage == "y"):
         maze.write_svg(fileName + ".svg")
-    maze.write_testcase(fileName + ".maze")
+    maze.write_testcase(fileName + ".inp")
